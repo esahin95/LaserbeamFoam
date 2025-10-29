@@ -23,6 +23,7 @@ License
 #include "findLocalCell.H"
 #include "SortableList.H"
 #include "globalIndex.H"
+// #include "Pstream.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -155,37 +156,83 @@ void laserHeatSource::createInitialRays
 
         forAll(CI, celli)
         {
-            const scalar x_coord = CI[celli].x();
-            // const scalar y_coord = CI[celli].y();
-            const scalar z_coord = CI[celli].z();
+             scalar r = 0;
+             scalar x_coord;
+             scalar y_coord;
+             scalar z_coord;
 
-            const scalar r =
-                sqrt
-                (
-                    sqr(x_coord - currentLaserPosition.x())
-                  + sqr(z_coord - currentLaserPosition.z())
-                );
+            if(laserDir[0] == 1 || laserDir[0] == -1){
+                // Info << "Laser is in the yz plane" << endl;
+                y_coord = CI[celli].y();       
+                z_coord = CI[celli].z();
+                r = sqrt(
+                         sqr(y_coord - currentLaserPosition.y())
+                        +sqr(z_coord - currentLaserPosition.z())
+                        );
+            }else if (laserDir[1] == 1 || laserDir[1] == -1) {
+                // Info << "Laser is in the xz plane" << endl;
+                x_coord = CI[celli].x();       
+                z_coord = CI[celli].z();
+                r = sqrt(
+                         sqr(x_coord - currentLaserPosition.x())
+                        +sqr(z_coord - currentLaserPosition.z())
+                        );
+            }
+            else if (laserDir[2] == 1 || laserDir[2] == -1) {
+                // Info << "Laser is in the xy plane" << endl;
+                x_coord = CI[celli].x();       
+                y_coord = CI[celli].y();
+                r = sqrt(
+                        sqr(x_coord - currentLaserPosition.x())
+                       +sqr(y_coord - currentLaserPosition.y())
+                        );
+            }else
+            {
+                FatalErrorIn("laserDir not axis-aligned") 
+                    << "Laser direction must be aligned with X, Y, or Z axis." << exit(FatalError);
+            }
 
             if
             (
-                r <= (1.5*beam_radius)
-             && laserBoundary_[celli] > SMALL
+                r <= (1.5*beam_radius) && laserBoundary_[celli] > SMALL
             )
             {
                 for (label Ray_j = 0; Ray_j < N_sub_divisions; Ray_j++)
                 {
                     for (label Ray_k = 0; Ray_k < N_sub_divisions; Ray_k++)
                     {
-                        const point p_1
-                        (
-                            CI[celli].x()
-                          - (yDimI[celli]/2.0)
-                          + ((yDimI[celli]/(N_sub_divisions+1))*(Ray_j+1)),
-                            CI[celli].y(),
-                            CI[celli].z()
-                          - (yDimI[celli]/2.0)
-                          + ((yDimI[celli]/(N_sub_divisions+1))*(Ray_k+1))
-                        );
+
+                        point p_1;
+                        
+                        if (laserDir[0] == 1 || laserDir[0] == -1)  // Laser along +-X → beam lies in YZ plane
+                        {
+                            p_1 = point(
+                                CI[celli].x(),
+                                CI[celli].y()  - (yDimI[celli]/2.0)+((yDimI[celli]/(N_sub_divisions+1))*(Ray_j+1)),
+                                CI[celli].z()  - (yDimI[celli]/2.0)+((yDimI[celli]/(N_sub_divisions+1))*(Ray_k+1))
+                            );
+                        }
+                        else if (laserDir[1] == 1 || laserDir[1] == -1)  // Laser along +-Y → beam lies in XZ plane
+                        {
+                             p_1 = point(
+                                CI[celli].x()  - (yDimI[celli]/2.0)+((yDimI[celli]/(N_sub_divisions+1))*(Ray_j+1)),
+                                CI[celli].y(),
+                                CI[celli].z()  - (yDimI[celli]/2.0)+((yDimI[celli]/(N_sub_divisions+1))*(Ray_k+1))
+                            );
+                        }
+                        else if (laserDir[2] == 1 || laserDir[2] == -1)  // Laser along +-Z → beam lies in XY plane
+                        {
+                            p_1 = point(
+                                CI[celli].x()  - (yDimI[celli]/2.0)+((yDimI[celli]/(N_sub_divisions+1))*(Ray_j+1)),
+                                CI[celli].y()  - (yDimI[celli]/2.0)+((yDimI[celli]/(N_sub_divisions+1))*(Ray_k+1)),
+                                CI[celli].z()
+                            );
+                        }
+                        else
+                        {
+                            FatalErrorIn("laserDir not axis-aligned") 
+                                << "Laser direction must be aligned with X, Y, or Z axis." << exit(FatalError);
+                        }
 
                         initial_points.append(p_1);
 
@@ -374,6 +421,64 @@ laserHeatSource::laserHeatSource
     vtkTimes_(),
     globalBB_(mesh.bounds())  // Initialize with local bounds first
 {
+        
+    word laserPatchName;
+
+    // Only master processor determines the patch name
+    if (Pstream::master())
+    {
+        forAll(laserBoundary_.boundaryField(), patchi)
+        {
+            const fvPatchScalarField& patchField = laserBoundary_.boundaryField()[patchi];
+                Info << "HERE" << endl;
+                Info << mesh.boundary()[patchi].name() << endl;
+
+                if (mesh.boundary()[patchi].name() == "topWall"){
+                    // Info << patchField 
+                }
+            
+            if (max(patchField) > 0.9)
+            {
+                laserPatchName = mesh.boundary()[patchi].name();
+                break;
+            }
+        }
+
+        // If no patch found, set to "none"
+        if (laserPatchName.empty()) laserPatchName = "none";
+    }
+
+    // Broadcast to all processors
+    Pstream::broadcast(laserPatchName, 0);
+
+    // Find patchID safely
+    label patchID = mesh.boundary().findPatchID(laserPatchName);
+    if (patchID == -1)
+    {
+        FatalErrorInFunction
+            << "No laser patch found. Aborting."
+            << exit(Foam::FatalError);
+    }
+
+    // Broadcast the patch name to all processors
+    Pstream::broadcast(laserPatchName, 0);
+
+    Info<< "Laser patch name: " << laserPatchName << endl;
+    Info<< "Laser patch name: " << laserPatchName << endl;
+    Info<< "Laser patch name: " << laserPatchName << endl;
+    Info<< "Laser patch name: " << laserPatchName << endl;
+    Info<< "Laser patch name: " << laserPatchName << endl;
+    Info<< "Laser patch name: " << laserPatchName << endl;
+    Info<< "Laser patch name: " << laserPatchName << endl;
+
+    const label laserPatchID = mesh.boundaryMesh().findPatchID(laserPatchName);
+
+    const polyPatch& laserPatch = mesh.boundaryMesh()[laserPatchID];
+
+    // Get face normals
+    laserDir = laserPatch.faceNormals()[0];
+    Info<< "laserDir: " << laserDir << endl;
+
     Info<< "radialPolarHeatSource = " << radialPolarHeatSource_ << endl;
 
     // Calculate global bounding box
