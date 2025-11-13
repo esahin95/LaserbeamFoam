@@ -5,31 +5,31 @@
     \\  /    A nd           | Web: http://www.foam-extend.org
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
-    License
-        This file is part of foam-extend.
+License
+    This file is part of foam-extend.
 
-        foam-extend is free software: you can redistribute it and/or modify it
-        under the terms of the GNU General Public License as published by the
-        Free Software Foundation, either version 3 of the License, or (at your
-        option) any later version.
+    foam-extend is free software: you can redistribute it and/or modify it
+    under the terms of the GNU General Public License as published by the
+    Free Software Foundation, either version 3 of the License, or (at your
+    option) any later version.
 
-        foam-extend is distributed in the hope that it will be useful, but
-        WITHOUT ANY WARRANTY; without even the implied warranty of
-        MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-        General Public License for more details.
+    foam-extend is distributed in the hope that it will be useful, but
+    WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+    General Public License for more details.
 
-        You should have received a copy of the GNU General Public License
-        along with foam-extend.  If not, see <http://www.gnu.org/licenses/>.
+    You should have received a copy of the GNU General Public License
+    along with foam-extend.  If not, see <http://www.gnu.org/licenses/>.
 
-    Description
-        Initialise the alpha.metal field for a powder bed multiphase simulation
-        based on a "locations" file containing particle positions and radii
-        (e.g. exported from LIGGGHTS).
+Description
+    Initialise the alpha.metal field for a powder bed multiphase simulation
+    based on a "locations" file containing particle positions and radii
+    (e.g. exported from LIGGGHTS).
 
-    Authors
-        Petar Cosic
-        Philip Cardiff
-        Gowthaman Parivendhan
+Authors
+    Petar Cosic
+    Philip Cardiff
+    Gowthaman Parivendhan
 
 \*---------------------------------------------------------------------------*/
 
