@@ -8,6 +8,6 @@ application="$(getApplication)"
 
 cp -r initial 0
 runApplication blockMesh 
-runApplication setSolidFraction -N 1
+runApplication setSolidFraction -nSubCells 1
 runApplication laserMeltFoam
 #------------------------------------------------------------------------------
