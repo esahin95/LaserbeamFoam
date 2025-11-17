@@ -854,7 +854,7 @@ void laserHeatSource::updateDeposition
             {
                 // Calculate the iterator distance as a fraction of the cell size
                 const scalar iterator_distance =
-                    (0.5/pi)*pow(VI[myCellID], 1.0/3.0);
+                    (0.25/pi)*pow(VI[myCellID], 1.0/3.0);
 
                 // Move the ray by the iterator distance
                 curRay.position_ += iterator_distance*curRay.direction_;
