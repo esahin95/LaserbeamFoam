@@ -215,7 +215,7 @@ public:
             const label maxLocalSearch,
             const scalar rayPowerRelTol,
             const boundBox& globalBB
-        );
+        );  
 
         //- Const access to the global bounding box
         const boundBox& globalBB() const

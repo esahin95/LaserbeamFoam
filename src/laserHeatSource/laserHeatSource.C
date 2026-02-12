@@ -72,6 +72,53 @@ void laserHeatSource::seedRayCloud
             << "nAngular: " << nAngular << endl;
 
         const scalar rMax = 1.5*beam_radius;
+
+        // ================================================================
+        // Improved radial discretisation for smoother Gaussian
+        //
+        // Use cell-edge based radial boundaries to compute exact annulus
+        // areas. Each ring iR covers r from r_inner[iR] to r_outer[iR].
+        // The sample point is at the area-weighted centroid of the annulus.
+        // ================================================================
+
+        // Compute radial boundaries (edges of annular rings)
+        List<scalar> radialBoundaries(nRadial + 1);
+        for (label iR = 0; iR <= nRadial; ++iR)
+        {
+            // Uniform spacing of boundaries
+            radialBoundaries[iR] = rMax * scalar(iR) / scalar(nRadial);
+        }
+
+        // Compute sample points (area-weighted centroid of each annulus)
+        // For an annulus from r1 to r2, the centroid is at:
+        //   r_centroid = (2/3) * (r2^3 - r1^3) / (r2^2 - r1^2)
+        List<scalar> radialPoints(nRadial);
+        List<scalar> annulusAreas(nRadial);
+
+        for (label iR = 0; iR < nRadial; ++iR)
+        {
+            const scalar r_inner = radialBoundaries[iR];
+            const scalar r_outer = radialBoundaries[iR + 1];
+
+            // Exact annulus area (full ring, will be divided by nAngular)
+            annulusAreas[iR] = pi * (sqr(r_outer) - sqr(r_inner));
+
+            // Area-weighted centroid for sample position
+            if (r_inner < SMALL)
+            {
+                // Central disc: centroid at 2/3 * r_outer
+                radialPoints[iR] = (2.0/3.0) * r_outer;
+            }
+            else
+            {
+                // Annulus: use exact centroid formula
+                radialPoints[iR] =
+                    (2.0/3.0)
+                   * (pow3(r_outer) - pow3(r_inner))
+                   / (sqr(r_outer) - sqr(r_inner));
+            }
+        }
+
         const label totalSamples = nRadial * nAngular;
         const label samplesPerProc = totalSamples/Pstream::nProcs();
         const label remainder = totalSamples % Pstream::nProcs();
@@ -81,13 +128,6 @@ void laserHeatSource::seedRayCloud
         const label endIdx =
             startIdx + samplesPerProc + (myRank < remainder ? 1 : 0);
         const label localSamples = endIdx - startIdx;
-
-        List<scalar> radialPoints(nRadial);
-        for (label iR = 0; iR < nRadial; ++iR)
-        {
-            const scalar fraction = scalar(iR + 0.5)/nRadial;
-            radialPoints[iR] = rMax * pow(fraction, 1.0);
-        }
 
         const point P0
         (
@@ -113,19 +153,9 @@ void laserHeatSource::seedRayCloud
 
             const scalar theta = 2.0*pi*iTheta/nAngular;
             const scalar r = radialPoints[iR];
-            const scalar deltaTheta = 2.0*pi/nAngular;
 
-            scalar deltaR = 0.0;
-            if (iR == 0)
-            {
-                deltaR = radialPoints[0];
-            }
-            else
-            {
-                deltaR = radialPoints[iR] - radialPoints[iR - 1];
-            }
-
-            const scalar area = r*deltaR*deltaTheta;
+            // Area element for this ray (annulus sector)
+            const scalar area = annulusAreas[iR] / scalar(nAngular);
 
             const scalar x_local = r*cos(theta);
             const scalar y_local = r*sin(theta);
@@ -134,6 +164,7 @@ void laserHeatSource::seedRayCloud
 
             initial_points.append(globalPos + perturbation);
 
+            // Gaussian power distribution using the sample point radius
             point_assoc_power.append
             (
                 area
@@ -462,6 +493,7 @@ laserHeatSource::laserHeatSource
     }
     else
     {
+        // Backward compatibility: single laser specified in main dict
         rayPaths_.setSize(1);
         laserNames_.setSize(1);
         laserDicts_.setSize(1);
@@ -545,7 +577,8 @@ void laserHeatSource::updateDeposition
     const volScalarField& resistivity_in
 )
 {
-    // Reset fields
+    Info<< "Updating deposition" << endl;
+
     deposition_ *= 0.0;
     laserBoundary_ *= 0.0;
     laserBoundary_ = fvc::average(laserBoundary_);
@@ -748,6 +781,9 @@ void laserHeatSource::updateDeposition
 
     // ==================================================================
     // Step 2: Seed the cloud with ray particles
+    //
+    // seedRayCloud computes ALL ray positions/powers globally, but
+    // each processor only adds particles for cells it owns.
     // ==================================================================
 
     label nTotalRays = 0;
@@ -768,31 +804,16 @@ void laserHeatSource::updateDeposition
         nTotalRays
     );
 
-    // Compute ray power tolerance
-    scalar rayPowerAbsTol = 0;
-    {
-        scalar maxRayPower = 0.0;
-        for (const laserRayParticle& p : rayCloud)
-        {
-            maxRayPower = max(maxRayPower, p.power_);
-        }
-        reduce(maxRayPower, maxOp<scalar>());
-        rayPowerAbsTol = rayPowerRelTol * maxRayPower;
-
-        Info<< "    Max ray power = " << maxRayPower << nl
-            << "    Ray power relative tolerance = " << rayPowerRelTol << nl
-            << "    Ray power absolute tolerance = " << rayPowerAbsTol
-            << endl;
-    }
-
-    Info<< "    Number of rays: " << nTotalRays << endl;
+    // Compute absolute power tolerance from relative tolerance
+    // (Based on average ray power, not total power)
+    const scalar rayPowerAbsTol =
+        rayPowerRelTol * currentLaserPower / max(nTotalRays, 1);
 
     // ==================================================================
-    // Step 3: Create tracking data and move the cloud
+    // Step 3: Move the particles through the mesh
     //
-    //  cloud.move() calls laserRayParticle::move() for each particle.
-    //  The particle tracking infrastructure handles:
-    //    - Exact cell-to-cell traversal via trackToFace()
+    //  Cloud::move() handles everything:
+    //    - Face-to-face tracking via trackToAndHitFace()
     //    - Automatic parallel transfer at processor patches
     //    - Callback to hitWallPatch() / hitPatch() at boundaries
     //
