@@ -33,7 +33,7 @@ Description
     Laser rays are written as VTKs for visualisation.
 
 Author
-    Tom Flint, The University of Manchester.
+    Thomas Flint, The University of Manchester.
     Philip Cardiff, University College Dublin.
 
 SourceFiles

@@ -15,10 +15,6 @@ License
     You should have received a copy of the GNU General Public License
     along with solids4foam.  If not, see <http://www.gnu.org/licenses/>.
 
-    authors:
-    Tom Flint
-    Philip Cardiff
-
 \*---------------------------------------------------------------------------*/
 
 #include "laserHeatSource.H"
@@ -56,8 +52,8 @@ void laserHeatSource::seedRayCloud
 ) const
 {
     // ================================================================
-    // Compute all ray starting positions and powers identically on
-    // every processor but only
+    // Compute ALL ray starting positions and powers identically on
+    // every processor (same as the old createInitialRays), but only
     // add a particle to the cloud on the processor that owns the
     // starting cell.
     // ================================================================
@@ -247,7 +243,6 @@ void laserHeatSource::seedRayCloud
     nTotalRays = rayCoords.size();
 
     // ================================================================
-    //  Tom note, need to check this ... seems to be working well
     // Add particles to the cloud ONLY on the owning processor.
     // mesh.findCell() returns -1 on processors that don't own the cell.
     // ================================================================
@@ -677,13 +672,9 @@ void laserHeatSource::updateDeposition
 
     deposition_.correctBoundaryConditions();
 
-    if (deposition_.time().writeTime())
-    {
-        writeRayPathsToVTK();
-        writeRayPathVTKSeriesFile();
-    }
-
-
+    // Write ray paths to VTK every timestep
+    writeRayPathsToVTK();
+    writeRayPathVTKSeriesFile();
 }
 
 
@@ -745,7 +736,7 @@ void laserHeatSource::updateDeposition
         2.0*pi*constant::universal::c.value()/wavelength;
 
     // ==================================================================
-    // Create the ray particle cloud
+    // Step 1: Create the ray particle cloud
     // ==================================================================
 
     Cloud<laserRayParticle> rayCloud
@@ -756,7 +747,7 @@ void laserHeatSource::updateDeposition
     );
 
     // ==================================================================
-    // Seed the cloud with ray particles
+    // Step 2: Seed the cloud with ray particles
     // ==================================================================
 
     label nTotalRays = 0;
@@ -796,7 +787,18 @@ void laserHeatSource::updateDeposition
 
     Info<< "    Number of rays: " << nTotalRays << endl;
 
-
+    // ==================================================================
+    // Step 3: Create tracking data and move the cloud
+    //
+    //  cloud.move() calls laserRayParticle::move() for each particle.
+    //  The particle tracking infrastructure handles:
+    //    - Exact cell-to-cell traversal via trackToFace()
+    //    - Automatic parallel transfer at processor patches
+    //    - Callback to hitWallPatch() / hitPatch() at boundaries
+    //
+    //  The deposition field is written to directly by each particle
+    //  during tracking - only to local cells, so no reduce needed.
+    // ==================================================================
 
     DynamicList<label> finishedRayIDs;
     DynamicList<DynamicList<point>> finishedRayPaths;
@@ -818,38 +820,36 @@ void laserHeatSource::updateDeposition
         finishedRayPaths
     );
 
-
+    // Move all ray particles through the mesh.
+    // trackTime is not physically meaningful for rays (instantaneous),
+    // but the Cloud::move interface requires it. We use GREAT to ensure
+    // the rays are tracked to completion in a single call.
     rayCloud.storeGlobalPositions();
     rayCloud.move(rayCloud, td, mesh.time().deltaTValue());
 
     // ==================================================================
-    // Gather ray path segments to master for VTK output
+    // Step 4: Gather ray path segments to master for VTK output
+    //
+    // Each ray may produce multiple segments (one per processor it
+    // traverses). Segments are stored in trackingData both at
+    // processor-boundary crossings and at particle death. We
+    // gather all segments and concatenate them per rayID.
     // ==================================================================
 
-    // if (Pstream::master()) // DONT want to do this just on master, idiot!
-    // {
+    if (Pstream::master())
+    {
         rayPaths_[laserID].clear();
         rayPaths_[laserID].setSize(nTotalRays);
-    // }
+    }
 
     {
-
-        const label nLocal = finishedRayIDs.size();
-
-        List<pointField> localPathsPlain(nLocal);
-        forAll(localPathsPlain, i)
-        {
-            localPathsPlain[i] = pointField(finishedRayPaths[i]);
-        }
-
-
         // Gather to master
         List<labelList> allIDs(Pstream::nProcs());
         allIDs[Pstream::myProcNo()] = finishedRayIDs;
         Pstream::gatherList(allIDs);
 
-        List<List<pointField>> allPaths(Pstream::nProcs());
-allPaths[Pstream::myProcNo()] = localPathsPlain; 
+        List<List<DynamicList<point>>> allPaths(Pstream::nProcs());
+        allPaths[Pstream::myProcNo()] = finishedRayPaths;
         Pstream::gatherList(allPaths);
 
         if (Pstream::master())
@@ -857,7 +857,7 @@ allPaths[Pstream::myProcNo()] = localPathsPlain;
             for (label procI = 0; procI < Pstream::nProcs(); ++procI)
             {
                 const labelList& ids = allIDs[procI];
-                const List<pointField>& paths = allPaths[procI];
+                const List<DynamicList<point>>& paths = allPaths[procI];
 
                 forAll(ids, i)
                 {
@@ -866,20 +866,17 @@ allPaths[Pstream::myProcNo()] = localPathsPlain;
                     {
                         DynamicList<point>& existing =
                             rayPaths_[laserID][rayID];
-                        const pointField& segment = paths[i];
+                        const DynamicList<point>& segment = paths[i];
 
                         if (existing.empty())
                         {
                             // First segment for this ray
-                            forAll(segment, j)
-                            {
-                                existing.append(segment[j]);
-                            }
+                            existing = segment;
                         }
                         else if (segment.size() > 0)
                         {
                             // Append segment, skipping the first
-                            // point if it duplicates the junction - Philips code from prev version of VTK write
+                            // point if it duplicates the junction
                             label startJ = 0;
                             if
                             (

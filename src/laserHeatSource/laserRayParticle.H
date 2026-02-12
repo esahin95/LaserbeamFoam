@@ -19,15 +19,19 @@ Class
     Foam::laserRayParticle
 
 Description
-    Lagrangian particle representing a single laser ray for use in laserbeamFoam solvers.
+    Lagrangian particle representing a single laser ray for use in a
+    Discrete Transfer Radiation Method (DTRM) style ray-tracing algorithm.
 
     Each particle carries a ray direction, power, and area element.
     The particle uses OpenFOAM's built-in particle tracking to traverse
     cells exactly (face-to-face), with automatic parallel transfer at
     processor boundaries handled by the Cloud infrastructure.
 
+    Inspired by OpenFOAM's DTRMParticle used in the laserDTRM radiation
+    model.
+
 Author
-    Tom Flint, The University of Manchester.
+    Thomas Flint, The University of Manchester.
     Philip Cardiff, University College Dublin.
 
 SourceFiles

@@ -241,34 +241,11 @@ bool Foam::laserRayParticle::move
         // Without this reset, stepFraction eventually reaches 1.0
         // and trackToAndHitFace stops advancing the particle, causing
         // an infinite loop that deadlocks parallel runs.
-        const point posBefore = position();
-
         stepFraction() = 0;
         scalar f = 1.0;
         const vector displacement = direction_ * maxTrackLength;
 
         trackToAndHitFace(f * displacement, f, cloud, td);
-
-        // Check if the particle is stuck at a non-wall, non-processor
-        // boundary (e.g. outlet, inlet, symmetry). In this case,
-        // hitPatch returned false but no specific handler killed or
-        // transferred the particle, so it didn't move. Store the
-        // path and kill the ray to prevent an infinite loop.
-        if
-        (
-            td.keepParticle
-         && !td.switchProcessor
-         && active_
-         && mag(position() - posBefore) < SMALL
-        )
-        {
-            path_.append(position());
-            td.finishedRayIDs_.append(globalRayIndex_);
-            td.finishedRayPaths_.append(path_);
-            active_ = false;
-            td.keepParticle = false;
-            break;
-        }
     }
 
     return td.keepParticle;
