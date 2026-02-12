@@ -26,7 +26,7 @@ metal
     nu                  1.35e-06;
     rho                 4420;
     Tsolidus            1928.15;
-    Tliquidus           1878;
+    Tliquidus           1978;
     LatentHeat          2.95653e5;
     beta                5.0e-4;
     poly_kappa          (10 0.015 0 0 0 0 0 0);

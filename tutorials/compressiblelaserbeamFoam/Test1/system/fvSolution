@@ -22,6 +22,14 @@ solvers
         nAlphaSubCycles 1;
         cAlpha	1;
     }
+    
+        "Yk.*"
+    {
+        solver          PBiCGStab;
+        preconditioner  DILU;
+        tolerance       1e-10;
+        relTol          0;
+    }
 
     "pcorr.*"
     {
