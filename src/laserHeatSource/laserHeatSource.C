@@ -705,9 +705,11 @@ void laserHeatSource::updateDeposition
 
     deposition_.correctBoundaryConditions();
 
-    // Write ray paths to VTK every timestep
+    if (deposition_.time().writeTime()){
     writeRayPathsToVTK();
     writeRayPathVTKSeriesFile();
+}
+
 }
 
 
