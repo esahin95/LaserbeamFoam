@@ -22,6 +22,7 @@ License
 #include "constants.H"
 #include "SortableList.H"
 
+#include "findLocalCell.H"
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
@@ -273,32 +274,41 @@ void laserHeatSource::seedRayCloud
 
     nTotalRays = rayCoords.size();
 
-    // ================================================================
-    // Add particles to the cloud ONLY on the owning processor.
-    // mesh.findCell() returns -1 on processors that don't own the cell.
-    // ================================================================
 
-    forAll(rayCoords, i)
+
+    label seedCellI = -1;
+
+forAll(rayCoords, i)
+{
+    const label cellI = findLocalCell
+    (
+        rayCoords[i],
+        seedCellI,
+        mesh,
+        100,    // maxLocalSearch
+        false   // debug
+    );
+
+    if (cellI >= 0)
     {
-        const label cellI = mesh.findCell(rayCoords[i]);
+        // Update seed for next iteration - nearby rays benefit
+        seedCellI = cellI;
+        
+        // This processor owns this ray's starting cell
+        laserRayParticle* pPtr = new laserRayParticle
+        (
+            mesh,
+            rayCoords[i],
+            cellI,
+            V_incident,
+            rayPowers[i],
+            0.0,        // dA
+            i           // globalRayIndex
+        );
 
-        if (cellI >= 0)
-        {
-            // This processor owns this ray's starting cell
-            laserRayParticle* pPtr = new laserRayParticle
-            (
-                mesh,
-                rayCoords[i],
-                cellI,
-                V_incident,
-                rayPowers[i],
-                0.0,        // dA (not used for deposition calc)
-                i           // globalRayIndex
-            );
-
-            cloud.addParticle(pPtr);
-        }
+        cloud.addParticle(pPtr);
     }
+}
 
     Info<< "    Total rays: " << nTotalRays
         << ", local particles: " << cloud.size() << endl;
@@ -848,7 +858,7 @@ void laserHeatSource::updateDeposition
     // but the Cloud::move interface requires it. We use GREAT to ensure
     // the rays are tracked to completion in a single call.
     rayCloud.storeGlobalPositions();
-    rayCloud.move(rayCloud, td, mesh.time().deltaTValue());
+    rayCloud.move(rayCloud, td, GREAT);
 
     // ==================================================================
     // Step 4: Gather ray path segments to master for VTK output
