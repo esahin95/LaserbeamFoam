@@ -34,12 +34,11 @@ License
 #include "fvcDiv.H"
 #include "fvcGrad.H"
 #include "fvcSnGrad.H"
+#include "fvcDdt.H"
 #include "fvcFlux.H"
 #include "fvcMeshPhi.H"
 #include "surfaceInterpolate.H"
 #include "unitConversion.H"
-
-#include "fvcDdt.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
