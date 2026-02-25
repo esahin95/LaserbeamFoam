@@ -67,6 +67,32 @@ void laserHeatSource::seedRayCloud
     DynamicList<vector> initial_points;
     DynamicList<scalar> point_assoc_power;
 
+    // All seed points will be perturbed by a small amount to avoid landing
+    // exactly on a face
+    // The magnitude of the perturbation is calculated as a small fraction of
+    // the smallest cell dimension, as opposed to an absolute value, and we take
+    // care to perturb in the ray direction and transverse to the ray direction
+
+    // Ray direction
+    const vector d = V_incident/(mag(V_incident) + VSMALL);
+
+    // Pick a stable “arbitrary” axis not parallel to d
+    const vector a =
+        (mag(d & vector(1,0,0)) < 0.9) ? vector(1,0,0) : vector(0,0,1);
+
+    // Perpendicular unit vector
+    vector t = d ^ a;
+    t /= (mag(t) + VSMALL);
+
+    // Minimum length scale
+    const scalar lCell = cbrt(gMin(mesh.V()));
+    const scalar eps = sqrt(SMALL)*lCell;
+
+    // Safe perturbation in the ray direction and transverse ray direction
+    const vector perturbation = eps*(d + t);
+    Info<< "    Perturbation vector for ray seed points = " << perturbation
+        << endl;
+
     if (radialPolarHeatSource())
     {
         Info<< "nRadial: " << nRadial << nl
@@ -144,7 +170,6 @@ void laserHeatSource::seedRayCloud
         vector u = (V_i ^ a);
         u = u/mag(u);
         const vector v = (V_i ^ u);
-        const vector perturbation(1e-10, 1e-10, 1e-10);
 
         for (label localIdx = 0; localIdx < localSamples; ++localIdx)
         {
@@ -207,7 +232,7 @@ void laserHeatSource::seedRayCloud
                 {
                     for (label Ray_k = 0; Ray_k < N_sub_divisions; Ray_k++)
                     {
-                        const point p_1
+                        point p_1
                         (
                             CI[celli].x()
                           - (yDimI[celli]/2.0)
@@ -217,6 +242,9 @@ void laserHeatSource::seedRayCloud
                           - (yDimI[celli]/2.0)
                           + ((yDimI[celli]/(N_sub_divisions+1))*(Ray_k+1))
                         );
+
+                        // Perturb the point
+                        p_1 += perturbation;
 
                         initial_points.append(p_1);
 

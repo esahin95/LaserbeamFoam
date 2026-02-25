@@ -242,10 +242,10 @@ bool Foam::laserRayParticle::move
         // and trackToAndHitFace stops advancing the particle, causing
         // an infinite loop that deadlocks parallel runs.
         stepFraction() = 0;
-        scalar f = 1.0;
-        const vector displacement = direction_ * maxTrackLength;
+        const scalar f = 1.0;
+        const vector displacement = direction_*maxTrackLength;
 
-        trackToAndHitFace(f * displacement, f, cloud, td);
+        trackToAndHitFace(displacement, f, cloud, td);
     }
 
     return td.keepParticle;
