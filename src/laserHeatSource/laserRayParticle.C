@@ -442,42 +442,42 @@ void Foam::laserRayParticle::readFields
 
     IOField<vector> direction
     (
-        cloud.fieldIOobject("direction", IOobject::MUST_READ),
+        cloud.newIOobject("direction", IOobject::MUST_READ),
         valid
     );
     cloud.checkFieldIOobject(cloud, direction);
 
     IOField<scalar> power
     (
-        cloud.fieldIOobject("power", IOobject::MUST_READ),
+        cloud.newIOobject("power", IOobject::MUST_READ),
         valid
     );
     cloud.checkFieldIOobject(cloud, power);
 
     IOField<scalar> initialPower
     (
-        cloud.fieldIOobject("initialPower", IOobject::MUST_READ),
+        cloud.newIOobject("initialPower", IOobject::MUST_READ),
         valid
     );
     cloud.checkFieldIOobject(cloud, initialPower);
 
     IOField<scalar> dA
     (
-        cloud.fieldIOobject("dA", IOobject::MUST_READ),
+        cloud.newIOobject("dA", IOobject::MUST_READ),
         valid
     );
     cloud.checkFieldIOobject(cloud, dA);
 
     IOField<label> bounceCount
     (
-        cloud.fieldIOobject("bounceCount", IOobject::MUST_READ),
+        cloud.newIOobject("bounceCount", IOobject::MUST_READ),
         valid
     );
     cloud.checkFieldIOobject(cloud, bounceCount);
 
     IOField<label> globalRayIndex
     (
-        cloud.fieldIOobject("globalRayIndex", IOobject::MUST_READ),
+        cloud.newIOobject("globalRayIndex", IOobject::MUST_READ),
         valid
     );
     cloud.checkFieldIOobject(cloud, globalRayIndex);
@@ -507,32 +507,32 @@ void Foam::laserRayParticle::writeFields
 
     IOField<vector> direction
     (
-        cloud.fieldIOobject("direction", IOobject::NO_READ),
+        cloud.newIOobject("direction", IOobject::NO_READ),
         np
     );
     IOField<scalar> power
     (
-        cloud.fieldIOobject("power", IOobject::NO_READ),
+        cloud.newIOobject("power", IOobject::NO_READ),
         np
     );
     IOField<scalar> initialPower
     (
-        cloud.fieldIOobject("initialPower", IOobject::NO_READ),
+        cloud.newIOobject("initialPower", IOobject::NO_READ),
         np
     );
     IOField<scalar> dA
     (
-        cloud.fieldIOobject("dA", IOobject::NO_READ),
+        cloud.newIOobject("dA", IOobject::NO_READ),
         np
     );
     IOField<label> bounceCount
     (
-        cloud.fieldIOobject("bounceCount", IOobject::NO_READ),
+        cloud.newIOobject("bounceCount", IOobject::NO_READ),
         np
     );
     IOField<label> globalRayIndex
     (
-        cloud.fieldIOobject("globalRayIndex", IOobject::NO_READ),
+        cloud.newIOobject("globalRayIndex", IOobject::NO_READ),
         np
     );
 

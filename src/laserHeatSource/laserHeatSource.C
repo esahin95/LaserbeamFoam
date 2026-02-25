@@ -274,41 +274,39 @@ void laserHeatSource::seedRayCloud
 
     nTotalRays = rayCoords.size();
 
-
-
     label seedCellI = -1;
 
-forAll(rayCoords, i)
-{
-    const label cellI = findLocalCell
-    (
-        rayCoords[i],
-        seedCellI,
-        mesh,
-        100,    // maxLocalSearch
-        false   // debug
-    );
-
-    if (cellI >= 0)
+    forAll(rayCoords, i)
     {
-        // Update seed for next iteration - nearby rays benefit
-        seedCellI = cellI;
-        
-        // This processor owns this ray's starting cell
-        laserRayParticle* pPtr = new laserRayParticle
-        (
-            mesh,
-            rayCoords[i],
-            cellI,
-            V_incident,
-            rayPowers[i],
-            0.0,        // dA
-            i           // globalRayIndex
-        );
+        const label cellI = findLocalCell
+            (
+                rayCoords[i],
+                seedCellI,
+                mesh,
+                100,    // maxLocalSearch
+                false   // debug
+            );
 
-        cloud.addParticle(pPtr);
+        if (cellI >= 0)
+        {
+            // Update seed for next iteration - nearby rays benefit
+            seedCellI = cellI;
+
+            // This processor owns this ray's starting cell
+            laserRayParticle* pPtr = new laserRayParticle
+                (
+                    mesh,
+                    rayCoords[i],
+                    cellI,
+                    V_incident,
+                    rayPowers[i],
+                    0.0,        // dA
+                    i           // globalRayIndex
+                );
+
+            cloud.addParticle(pPtr);
+        }
     }
-}
 
     Info<< "    Total rays: " << nTotalRays
         << ", local particles: " << cloud.size() << endl;
@@ -819,7 +817,7 @@ void laserHeatSource::updateDeposition
     // Compute absolute power tolerance from relative tolerance
     // (Based on average ray power, not total power)
     const scalar rayPowerAbsTol =
-        rayPowerRelTol * currentLaserPower / max(nTotalRays, 1);
+        rayPowerRelTol*currentLaserPower/max(nTotalRays, 1);
 
     // ==================================================================
     // Step 3: Move the particles through the mesh
