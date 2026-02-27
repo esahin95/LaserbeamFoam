@@ -1,19 +1,19 @@
 /*---------------------------------------------------------------------------*\
 License
-    This file is part of solids4foam.
+    This file is part of laserbeamFoam.
 
-    solids4foam is free software: you can redistribute it and/or modify it
+    laserbeamFoam is free software: you can redistribute it and/or modify it
     under the terms of the GNU General Public License as published by the
     Free Software Foundation, either version 3 of the License, or (at your
     option) any later version.
 
-    solids4foam is distributed in the hope that it will be useful, but
+    laserbeamFoam is distributed in the hope that it will be useful, but
     WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
     General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with solids4foam.  If not, see <http://www.gnu.org/licenses/>.
+    along with laserbeamFoam.  If not, see <http://www.gnu.org/licenses/>.
 
 \*---------------------------------------------------------------------------*/
 
@@ -439,7 +439,7 @@ laserHeatSource::laserHeatSource
         mesh,
         dimensionedScalar("yDim", dimensionSet(0, 1, 0, 0, 0), 1.0)
     ),
-    powderSim_(lookupOrDefault<Switch>("PowderSim", false)),
+    powderSim_(lookupOrDefault<Switch>("PowderSim", false)), // Needed for cases where we have spherical particles (that have jagged edges or cartesian grids) which will cause spurious currents due to these large gradients - we extend the damping term by 1 cell
     radialPolarHeatSource_
     (
         found("radialPolarHeatSource")
@@ -465,6 +465,7 @@ laserHeatSource::laserHeatSource
         reduce(globalBB_.max(), maxOp<vector>());
 
         globalBB_.inflate(0.01);
+        // Inflate the bounding box by 1% to avoid issues with rays starting just at the mesh boundary -> probably not an issue but worth doing 
 
         Info<< "Scaled global mesh bounding box: " << globalBB_ << endl;
     }
@@ -644,7 +645,7 @@ void laserHeatSource::updateDeposition
             const scalar pi = constant::mathematical::pi;
             currentLaserPosition[vector::X] +=
                 oscAmpX*sin(2*pi*oscFreqX*time);
-        }
+        }// If defined, add oscillation to laser position
 
         if (dict.found("HS_oscAmpZ"))
         {
@@ -653,7 +654,7 @@ void laserHeatSource::updateDeposition
             const scalar pi = constant::mathematical::pi;
             currentLaserPosition[vector::Z] +=
                 oscAmpZ*cos(2*pi*oscFreqZ*time);
-        }
+        }// If defined, add oscillation to laser position
 
         Info<< "    position including any oscillation = "
             << currentLaserPosition << endl;
@@ -741,10 +742,10 @@ void laserHeatSource::updateDeposition
 
     deposition_.correctBoundaryConditions();
 
-    if (deposition_.time().writeTime()){
-    writeRayPathsToVTK();
-    writeRayPathVTKSeriesFile();
-}
+//     if (deposition_.time().writeTime()){
+//     writeRayPathsToVTK();
+//     writeRayPathVTKSeriesFile();
+// }
 
 }
 
@@ -966,7 +967,7 @@ void laserHeatSource::updateDeposition
 void laserHeatSource::writeRayPathsToVTK()
 {
     const Time& runTime = deposition_.time();
-    if (Pstream::master())
+    if (Pstream::master()) // Create a directory for the VTK files
     {
         fileName vtkDir;
         if (Pstream::parRun())
