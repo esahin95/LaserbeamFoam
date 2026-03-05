@@ -206,7 +206,7 @@ void laserHeatSource::seedRayCloud
             );
         }
     }
-    else
+    else // One ray for each boundary patch face within the laser radius
     {
         const vectorField& CI = mesh.C();
 
@@ -270,10 +270,13 @@ void laserHeatSource::seedRayCloud
         }
     }
 
+    // List with size equal to number of processors
     // Gather all initial points/powers to all processors
     List<pointField> gatheredData(Pstream::nProcs());
     List<scalarField> gatheredPowers(Pstream::nProcs());
 
+    // Populate and gather the list onto the master processor.
+    // Distibulte the data accross the different processors
     gatheredData[Pstream::myProcNo()] = initial_points;
     Pstream::gatherList(gatheredData);
     Pstream::broadcastList(gatheredData);
@@ -282,6 +285,7 @@ void laserHeatSource::seedRayCloud
     Pstream::gatherList(gatheredPowers);
     Pstream::broadcastList(gatheredPowers);
 
+    // List of initial points
     pointField rayCoords
     (
         ListListOps::combine<Field<vector>>
@@ -300,6 +304,8 @@ void laserHeatSource::seedRayCloud
         )
     );
 
+
+    // Create a list of Ray objects
     nTotalRays = rayCoords.size();
 
     label seedCellI = -1;
@@ -514,6 +520,8 @@ laserHeatSource::laserHeatSource
             );
         }
 
+            // Check that a single laser is not also defined
+
         if (found("timeVsLaserPosition"))
         {
             FatalErrorInFunction
@@ -530,6 +538,7 @@ laserHeatSource::laserHeatSource
     }
     else
     {
+        // There is no lists of lasers, just one
         // Backward compatibility: single laser specified in main dict
         rayPaths_.setSize(1);
         laserNames_.setSize(1);
@@ -539,6 +548,7 @@ laserHeatSource::laserHeatSource
 
         laserNames_[0] = "laser0";
 
+        // Copy the main dict
         laserDicts_.set(0, new dictionary(*this));
 
         timeVsLaserPosition_.set
@@ -554,6 +564,7 @@ laserHeatSource::laserHeatSource
         );
     }
 
+        // Update laserBoundary - only used in old boundary based initialisation
     laserBoundary_ = fvc::average(laserBoundary_);
 
     if (debug)
@@ -562,6 +573,7 @@ laserHeatSource::laserHeatSource
         rayNumber_.writeOpt() = IOobject::AUTO_WRITE;
     }
 
+    // Give errors if the old input format is found
     if (found("HS_bg"))
     {
         FatalErrorInFunction
@@ -569,7 +581,7 @@ laserHeatSource::laserHeatSource
             << "position in time via the laserPositionVsTime sub-dict"
             << exit(FatalError);
     }
-
+    // Give errors if the old input format is found
     if (found("HS_lg"))
     {
         FatalErrorInFunction
@@ -577,7 +589,7 @@ laserHeatSource::laserHeatSource
             << "position in time via the laserPositionVsTime sub-dict"
             << exit(FatalError);
     }
-
+    // Give errors if the old input format is found
     if (found("HS_velocity"))
     {
         FatalErrorInFunction
@@ -585,7 +597,7 @@ laserHeatSource::laserHeatSource
             << "position in time via the laserPositionVsTime sub-dict"
             << exit(FatalError);
     }
-
+    // Give errors if the old input format is found
     if (found("HS_Q"))
     {
         FatalErrorInFunction
@@ -593,7 +605,7 @@ laserHeatSource::laserHeatSource
             << "power in time via the laserPowereVsTime sub-dict"
             << exit(FatalError);
     }
-
+    // Give errors if the old input format is found
     if (found("elec_resistivity"))
     {
         FatalErrorInFunction
@@ -627,6 +639,7 @@ void laserHeatSource::updateDeposition
 
     forAll(laserNames_, laserI)
     {
+        // Lookup the current laser position and power
         vector currentLaserPosition =
             timeVsLaserPosition_[laserI](time);
         const scalar currentLaserPower =
@@ -636,8 +649,10 @@ void laserHeatSource::updateDeposition
             << "    mean position = " << currentLaserPosition << nl
             << "    power = " << currentLaserPower << endl;
 
+            // Dict for current laser
         const dictionary& dict = laserDicts_[laserI];
 
+        // If defined, add oscillation to laser position
         if (dict.found("HS_oscAmpX"))
         {
             const scalar oscAmpX(readScalar(dict.lookup("HS_oscAmpX")));
