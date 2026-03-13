@@ -16,7 +16,7 @@ fi
 
 # Create the mesh
 runApplication blockMesh
-runApplication setSolidFraction -subDivisions 1
+runApplication setSolidFraction -subDivisions 4
 runApplication transformPoints -rotate '((0 1 0) (0 0 1))'
 
 if [[ $1 == "parallel" ]]
