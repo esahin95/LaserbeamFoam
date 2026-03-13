@@ -186,8 +186,9 @@ public:
         }
 
         //- Update the deposition field for all lasers
-        // The function takes three arguments
-        ////  The filtered volume of metal field  (alphaFiltered), the normal vector field nFiltered and the scalar resistivity field
+        //  The function takes three arguments
+        //  The filtered volume of metal field  (alphaFiltered), the normal
+        //  vector field nFiltered and the scalar resistivity field
         void updateDeposition
         (
             const volScalarField& alphaFiltered,
@@ -217,7 +218,7 @@ public:
             const label maxLocalSearch,
             const scalar rayPowerRelTol,
             const boundBox& globalBB
-        );  
+        );
 
         //- Const access to the global bounding box
         const boundBox& globalBB() const
