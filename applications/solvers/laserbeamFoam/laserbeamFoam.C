@@ -196,13 +196,11 @@ int main(int argc, char *argv[])
         if (runTime.outputTime())
         {
             laser.writeRayPathsToVTK();
+            laser.writeRayPathVTKSeriesFile();
         }
 
         runTime.printExecutionTime(Info);
     }
-
-    // Write a VTK series file for easy-opening of the ray files
-    laser.writeRayPathVTKSeriesFile();
 
     Info<< "End\n" << endl;
 

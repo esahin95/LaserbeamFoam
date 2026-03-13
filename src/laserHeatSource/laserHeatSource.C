@@ -471,7 +471,7 @@ laserHeatSource::laserHeatSource
         reduce(globalBB_.max(), maxOp<vector>());
 
         globalBB_.inflate(0.01);
-        // Inflate the bounding box by 1% to avoid issues with rays starting just at the mesh boundary -> probably not an issue but worth doing 
+        // Inflate the bounding box by 1% to avoid issues with rays starting just at the mesh boundary -> probably not an issue but worth doing
 
         Info<< "Scaled global mesh bounding box: " << globalBB_ << endl;
     }
@@ -756,12 +756,6 @@ void laserHeatSource::updateDeposition
     }
 
     deposition_.correctBoundaryConditions();
-
-//     if (deposition_.time().writeTime()){
-//     writeRayPathsToVTK();
-//     writeRayPathVTKSeriesFile();
-// }
-
 }
 
 
