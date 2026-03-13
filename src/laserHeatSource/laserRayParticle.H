@@ -59,6 +59,9 @@ class laserRayParticle;
 // Cloud typedef
 typedef Cloud<laserRayParticle> laserRayParticleCloud;
 
+// Friend operators
+Ostream& operator<<(Ostream&, const laserRayParticle&);
+
 
 /*---------------------------------------------------------------------------*\
                       Class laserRayParticle Declaration
