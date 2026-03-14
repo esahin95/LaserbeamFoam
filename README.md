@@ -1,7 +1,7 @@
 # `laserbeamFoam` solvers
 
 <p align="center">
-  <img src="images/LBF.gif" alt="LBF gif" style="width:100%;max-width:800px;">
+  <img src="images/LBF2.gif" alt="LBF gif" style="width:100%;max-width:800px;">
 </p>
 
 ## Overview
