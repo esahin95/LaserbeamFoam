@@ -1,6 +1,6 @@
 # `laserbeamFoam` solvers
 
-![alt text](images/LBF.gif)
+![alt text](images/LBF2.gif)
 
 ## Overview
 
